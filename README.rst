@@ -40,3 +40,15 @@ redirect_stderr=false
 autostart=true
 
 autorestart=true
+
+httpok new args
+===============
+using httpok --help
+
+-u --username=: supervisor username.
+
+-P --password=: supervisor password.
+
+-D --dingding: is send alert message to dingding.
+
+-T --token=: dingding token.
