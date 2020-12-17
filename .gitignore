@@ -2,6 +2,7 @@
 *.egg
 *.egg-info
 *.pyc
+*.idea
 *.pyo
 *.swp
 .DS_Store
@@ -12,6 +13,7 @@ build/
 docs/_build/
 dist/
 env*/
+venv
 htmlcov/
 tmp/
 coverage.xml

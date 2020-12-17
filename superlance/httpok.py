@@ -85,6 +85,14 @@ Options:
       be used in the email subject to identify which httpok process
       restarted the process.
 
+-u --username=: supervisor username.
+
+-P --password=: supervisor password.
+
+-D --dingding: is send alert message to dingding.
+
+-T --token=: dingding token.
+
 URL -- The URL to which to issue a GET request.
 
 The -c option may be specified more than once, allowing for
@@ -114,6 +122,9 @@ from supervisor.options import make_namespec
 
 from superlance import timeoutconn
 
+# add by wanghk
+from dingding import DingDing
+
 def usage(exitstatus=255):
     print(doc)
     sys.exit(exitstatus)
@@ -121,7 +132,7 @@ def usage(exitstatus=255):
 class HTTPOk:
     connclass = None
     def __init__(self, rpc, programs, any, url, timeout, statuses, inbody,
-                 email, sendmail, coredir, gcore, eager, retry_time, name):
+                 email, sendmail, coredir, gcore, eager, retry_time, name, username, password, dingding, token):
         self.rpc = rpc
         self.programs = programs
         self.any = any
@@ -139,6 +150,11 @@ class HTTPOk:
         self.stdout = sys.stdout
         self.stderr = sys.stderr
         self.name = name
+        # add by wanghk
+        self.username = username
+        self.password = password
+        self.dingding = dingding
+        self.token = token
 
     def listProcesses(self, state=None):
         return [x for x in self.rpc.supervisor.getAllProcessInfo()
@@ -281,6 +297,12 @@ class HTTPOk:
             message = '\n'.join(messages)
             self.mail(self.email, subject, message)
 
+        if self.dingding:
+            ding = DingDing(self.token)
+            message = '\n'.join(messages)
+            ding.send_text(message, at_all=True)
+
+
     def mail(self, email, subject, msg):
         body =  'To: %s\n' % self.email
         body += 'Subject: %s\n' % subject
@@ -320,7 +342,7 @@ class HTTPOk:
 
 
 def main(argv=sys.argv):
-    short_args="hp:at:c:b:s:m:g:d:eEn:"
+    short_args="hp:at:c:b:s:m:g:d:eEn:u:P:DT:"
     long_args=[
         "help",
         "program=",
@@ -335,6 +357,11 @@ def main(argv=sys.argv):
         "eager",
         "not-eager",
         "name=",
+        # add by wanghk
+        "username=",
+        "password=",
+        "dingding",
+        "token=",
         ]
     arguments = argv[1:]
     try:
@@ -364,6 +391,12 @@ def main(argv=sys.argv):
     statuses = []
     inbody = None
     name = None
+
+    # add by wanghk
+    username = None
+    password = None
+    dingding = False
+    token = None
 
     for option, value in opts:
 
@@ -403,12 +436,26 @@ def main(argv=sys.argv):
         if option in ('-n', '--name'):
             name = value
 
+        # add by wanghk
+        if option in ("-u", "--username"):
+            username = value
+        if option in ("-P", "--password"):
+            password = value
+        if option in ("-D", "--dingding"):
+            dingding = True
+        if option in ("-T", "--token"):
+            token = value
+
     if not statuses:
         statuses = [200]
 
     url = arguments[-1]
 
     try:
+        if username:
+            os.environ.setdefault("SUPERVISOR_USERNAME", username)
+        if password:
+            os.environ.setdefault("SUPERVISOR_PASSWORD", password)
         rpc = childutils.getRPCInterface(os.environ)
     except KeyError as e:
         if e.args[0] != 'SUPERVISOR_SERVER_URL':
@@ -419,8 +466,9 @@ def main(argv=sys.argv):
         return
 
     prog = HTTPOk(rpc, programs, any, url, timeout, statuses, inbody, email,
-                  sendmail, coredir, gcore, eager, retry_time, name)
+                  sendmail, coredir, gcore, eager, retry_time, name, username, password, dingding, token)
     prog.runforever()
+
 
 if __name__ == '__main__':
     main()
